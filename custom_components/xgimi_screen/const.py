@@ -16,7 +16,7 @@ def adb_key_path(hass: HomeAssistant) -> str:
 
 DEFAULT_HOST = "192.168.1.8"
 DEFAULT_PORT = 5555
-POLL_INTERVAL = timedelta(seconds=5)
+POLL_INTERVAL = timedelta(seconds=1)
 
 # Binder transactions on xgimi.hardware.gmpf.IDisplayManager.
 # 27 sets the image on or off. 28 reads it back. The projector stays running.

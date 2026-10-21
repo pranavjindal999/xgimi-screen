@@ -2,7 +2,7 @@
 
 A Home Assistant switch for the XGIMI screen-off control: image off, projector still running.
 
-The switch state is read from the projector every 5 seconds. Turning the screen off or on with the remote updates the switch. Turning the switch off does not shut the projector down.
+The switch state is read from the projector every second. Turning the screen off or on with the remote updates the switch. Turning the switch off does not shut the projector down.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=pranavjindal999&repository=xgimi-screen&category=integration)
 
@@ -22,6 +22,6 @@ The device appears with one switch, **Screen**.
 
 - **On** means the image is showing.
 - **Off** means screen off. Audio and the system keep running.
-- If you use the remote, the switch follows within about 5 seconds.
+- If you use the remote, the switch follows within about a second.
 
 Network debugging has to stay enabled on the projector.
