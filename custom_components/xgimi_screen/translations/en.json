@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect the projector",
+        "description": "Use the projector's network address and debugging port. The switch reads the projector, so changing the screen with the remote updates Home Assistant.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "authorize": {
+        "title": "Allow debugging on the projector",
+        "description": "The projector is showing Allow USB debugging. Choose Allow, and check Always allow from this computer. The picture has to be on to see that prompt. Then continue here."
+      },
+      "reconfigure": {
+        "title": "Update the projector address",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach the projector. Check the address and that network debugging is turned on.",
+      "not_authorized": "The projector has not allowed this connection yet.",
+      "not_xgimi": "This device did not answer the XGIMI screen command.",
+      "unknown": "Something unexpected went wrong."
+    },
+    "abort": {
+      "already_configured": "This projector is already set up.",
+      "wrong_device": "That address is a different projector.",
+      "reconfigure_successful": "Projector connection updated."
+    }
+  }
+}
