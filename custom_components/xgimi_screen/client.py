@@ -11,8 +11,18 @@ from adb_shell.auth.keygen import keygen
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 from adb_shell.exceptions import AdbTimeoutError, DeviceAuthError, TcpTimeoutException
 
-from .const import CMD_OFF, CMD_ON, CMD_STATE
-from .parser import screen_is_on
+from .const import (
+    BRIGHTNESS_MAX,
+    BRIGHTNESS_MIN,
+    BRIGHTNESS_SETTING,
+    CMD_BOOST_OFF,
+    CMD_BOOST_ON,
+    CMD_OFF,
+    CMD_ON,
+    CMD_READ_ALL,
+    _DISPLAY,
+)
+from .parser import ProjectorState, parse_state
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +78,7 @@ class XgimiClient:
         if device_name in ("", "null"):
             device_name = "XGIMI Projector"
         try:
-            screen_is_on(await self._shell(CMD_STATE))
+            await self.async_state()
         except ValueError as err:
             raise XgimiNotSupported(str(err)) from err
         return {
@@ -78,13 +88,26 @@ class XgimiClient:
             "device_name": device_name,
         }
 
-    async def async_screen_is_on(self) -> bool:
-        """Read the current image state from the projector."""
-        return screen_is_on(await self._shell(CMD_STATE))
+    async def async_state(self) -> ProjectorState:
+        """Read screen, brightness, and luminance boost from the projector."""
+        return parse_state(await self._shell(CMD_READ_ALL))
 
     async def async_set_screen(self, turn_on: bool) -> None:
         """Turn the image on or off. The projector itself keeps running."""
         await self._shell(CMD_ON if turn_on else CMD_OFF)
+
+    async def async_set_brightness(self, level: int) -> None:
+        """Set the 1–10 brightness slider and the picture-menu setting."""
+        if level < BRIGHTNESS_MIN or level > BRIGHTNESS_MAX:
+            raise ValueError(f"Brightness must be {BRIGHTNESS_MIN}–{BRIGHTNESS_MAX}")
+        await self._shell(
+            f"{_DISPLAY} 6 i32 {level}; "
+            f"settings put global {BRIGHTNESS_SETTING} {level}"
+        )
+
+    async def async_set_luminance_boost(self, enabled: bool) -> None:
+        """Turn luminance boost on (above level 10) or off."""
+        await self._shell(CMD_BOOST_ON if enabled else CMD_BOOST_OFF)
 
     async def _shell(self, command: str) -> str:
         async with self._lock:

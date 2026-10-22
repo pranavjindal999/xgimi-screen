@@ -20,9 +20,23 @@ POLL_INTERVAL = timedelta(seconds=1)
 
 # Binder transactions on xgimi.hardware.gmpf.IDisplayManager.
 # 27 sets the image on or off. 28 reads it back. The projector stays running.
-CMD_ON = "service call xgimi.hardware.gmpf.IDisplayManager/default 27 i32 1"
-CMD_OFF = "service call xgimi.hardware.gmpf.IDisplayManager/default 27 i32 0"
-CMD_STATE = "service call xgimi.hardware.gmpf.IDisplayManager/default 28"
+# 6 sets the 1–10 brightness level. 7 reads it back.
+# 151 sets luminance boost (lens display mode 1). 152 reads it back.
+_DISPLAY = "service call xgimi.hardware.gmpf.IDisplayManager/default"
+CMD_ON = f"{_DISPLAY} 27 i32 1"
+CMD_OFF = f"{_DISPLAY} 27 i32 0"
+CMD_STATE = f"{_DISPLAY} 28"
+CMD_BRIGHTNESS_STATE = f"{_DISPLAY} 7"
+CMD_BOOST_ON = f"{_DISPLAY} 151 i32 1"
+CMD_BOOST_OFF = f"{_DISPLAY} 151 i32 0"
+CMD_BOOST_STATE = f"{_DISPLAY} 152"
+CMD_READ_ALL = f"{CMD_STATE}; {CMD_BRIGHTNESS_STATE}; {CMD_BOOST_STATE}"
+
+BRIGHTNESS_MIN = 1
+BRIGHTNESS_MAX = 10
+
+# The picture menu stores the slider here and follows changes to it.
+BRIGHTNESS_SETTING = "gm_projector_brightness"
 
 MODEL_NAMES = {
     "XR16A": "Horizon 20 Max",

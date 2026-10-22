@@ -1,16 +1,17 @@
-"""Screen switch that follows the projector, including the remote."""
+"""Switches that follow the projector, including the remote and picture menu."""
 
 from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MODEL_NAMES
+from .const import DOMAIN
 from .coordinator import XgimiCoordinator
+from .device import projector_device_info
+from .parser import ProjectorState
 
 
 async def async_setup_entry(
@@ -18,36 +19,48 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add the screen switch."""
+    """Add the screen and luminance-boost switches."""
     coordinator: XgimiCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([XgimiScreenSwitch(coordinator, entry)])
+    async_add_entities(
+        [
+            XgimiScreenSwitch(coordinator, entry),
+            XgimiLuminanceBoostSwitch(coordinator, entry),
+        ]
+    )
 
 
-class XgimiScreenSwitch(CoordinatorEntity[XgimiCoordinator], SwitchEntity):
-    """On when the image is showing. Off is screen off, not shutdown."""
+class _XgimiSwitch(CoordinatorEntity[XgimiCoordinator], SwitchEntity):
+    """A switch whose state is the last value read from the projector."""
 
     _attr_has_entity_name = True
-    _attr_name = "Screen"
-    _attr_icon = "mdi:projector-screen"
 
     def __init__(self, coordinator: XgimiCoordinator, entry: ConfigEntry) -> None:
         """Attach the switch to the projector device."""
         super().__init__(coordinator)
-        data = entry.data
-        model = data["model"]
-        self._attr_unique_id = f"{data['serial']}_screen"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, data["serial"])},
-            manufacturer=data.get("manufacturer") or "XGIMI",
-            model=MODEL_NAMES.get(model, model),
-            name=data["device_name"],
-            serial_number=data["serial"],
-        )
+        self._attr_device_info = projector_device_info(entry)
+
+    def _state(self) -> ProjectorState | None:
+        return self.coordinator.data
+
+
+class XgimiScreenSwitch(_XgimiSwitch):
+    """On when the image is showing. Off is screen off, not shutdown."""
+
+    _attr_name = "Screen"
+    _attr_icon = "mdi:projector-screen"
+
+    def __init__(self, coordinator: XgimiCoordinator, entry: ConfigEntry) -> None:
+        """Attach the screen switch to the projector device."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.data['serial']}_screen"
 
     @property
     def is_on(self) -> bool | None:
-        """Report the last state read from the projector."""
-        return self.coordinator.data
+        """Report the last image state read from the projector."""
+        state = self._state()
+        if state is None:
+            return None
+        return state.screen_on
 
     @property
     def icon(self) -> str:
@@ -64,4 +77,34 @@ class XgimiScreenSwitch(CoordinatorEntity[XgimiCoordinator], SwitchEntity):
     async def async_turn_off(self, **kwargs: object) -> None:
         """Blank the image, then read the projector again."""
         await self.coordinator.client.async_set_screen(False)
+        await self.coordinator.async_request_refresh()
+
+
+class XgimiLuminanceBoostSwitch(_XgimiSwitch):
+    """On sends the light engine past brightness level 10."""
+
+    _attr_name = "Luminance boost"
+    _attr_icon = "mdi:brightness-7"
+
+    def __init__(self, coordinator: XgimiCoordinator, entry: ConfigEntry) -> None:
+        """Attach the boost switch to the projector device."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.data['serial']}_luminance_boost"
+
+    @property
+    def is_on(self) -> bool | None:
+        """Report the last boost state read from the projector."""
+        state = self._state()
+        if state is None:
+            return None
+        return state.luminance_boost
+
+    async def async_turn_on(self, **kwargs: object) -> None:
+        """Enable luminance boost, then read the projector again."""
+        await self.coordinator.client.async_set_luminance_boost(True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: object) -> None:
+        """Disable luminance boost, then read the projector again."""
+        await self.coordinator.client.async_set_luminance_boost(False)
         await self.coordinator.async_request_refresh()

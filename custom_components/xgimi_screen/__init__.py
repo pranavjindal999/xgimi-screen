@@ -10,11 +10,11 @@ from .client import XgimiClient
 from .const import DOMAIN, adb_key_path
 from .coordinator import XgimiCoordinator
 
-PLATFORMS = [Platform.SWITCH]
+PLATFORMS = [Platform.NUMBER, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Connect to the projector and expose the screen switch."""
+    """Connect to the projector and expose its controls."""
     client = XgimiClient(entry.data["host"], entry.data["port"], adb_key_path(hass))
     coordinator = XgimiCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Remove the switch and close the projector connection."""
+    """Remove the controls and close the projector connection."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         coordinator: XgimiCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
