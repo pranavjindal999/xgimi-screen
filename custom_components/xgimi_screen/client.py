@@ -133,12 +133,30 @@ class XgimiClient:
         await self._shell(CMD_BOOST_ON if enabled else CMD_BOOST_OFF)
 
     async def async_set_volume(self, level: int) -> None:
-        """Set the music volume. This is the remote volume rocker."""
+        """Set the music volume by the same key events as the remote rocker.
+
+        Asking AudioService to set the level directly is ignored on this
+        projector. The volume keys are not.
+        """
         if level < 0 or level > self.volume_max:
             raise ValueError(f"Volume must be 0–{self.volume_max}")
-        await self._shell(
-            f"cmd media_session volume --stream {VOLUME_STREAM} --set {level}"
+        command = (
+            "current=$(cmd media_session volume --stream "
+            f"{VOLUME_STREAM} --get | grep -o 'volume is [0-9][0-9]*' | "
+            "grep -o '[0-9][0-9]*' | tail -n 1); "
+            f"target={level}; "
+            'if [ -z "$current" ]; then echo volume-unread; exit 1; fi; '
+            'delta=$((target - current)); '
+            'if [ "$delta" -eq 0 ]; then exit 0; fi; '
+            'if [ "$delta" -gt 0 ]; then key=KEYCODE_VOLUME_UP; '
+            "else key=KEYCODE_VOLUME_DOWN; delta=$((-delta)); fi; "
+            'keys=""; i=0; '
+            'while [ "$i" -lt "$delta" ]; do keys="$keys $key"; i=$((i+1)); done; '
+            "input keyevent $keys"
         )
+        reply = await self._shell(command, timeout_s=45, retry=False)
+        if "volume-unread" in reply:
+            raise ValueError("Could not read the projector volume")
 
     async def async_set_power(self, turn_on: bool) -> None:
         """Enter or leave standby. This does not shut the projector down."""
@@ -175,17 +193,25 @@ class XgimiClient:
             None, _send_broadcast, packet, targets
         )
 
-    async def _shell(self, command: str) -> str:
+    async def _shell(
+        self, command: str, timeout_s: float = 10, retry: bool = True
+    ) -> str:
         async with self._lock:
             await self._ensure_locked()
             assert self._device is not None
             try:
-                return await self._device.shell(command, read_timeout_s=10, timeout_s=10)
+                return await self._device.shell(
+                    command, read_timeout_s=timeout_s, timeout_s=timeout_s
+                )
             except _UNREACHABLE:
+                if not retry:
+                    raise
                 await self._close_locked()
                 await self._ensure_locked()
                 assert self._device is not None
-                return await self._device.shell(command, read_timeout_s=10, timeout_s=10)
+                return await self._device.shell(
+                    command, read_timeout_s=timeout_s, timeout_s=timeout_s
+                )
 
     async def _ensure_locked(self) -> None:
         if self._device is not None and self._device.available:
