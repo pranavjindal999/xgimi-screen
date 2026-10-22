@@ -1,10 +1,11 @@
-"""ADB client for the XGIMI screen command."""
+"""ADB client for the XGIMI projector commands."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
+import socket
 
 from adb_shell.adb_device_async import AdbDeviceTcpAsync
 from adb_shell.auth.keygen import keygen
@@ -20,9 +21,14 @@ from .const import (
     CMD_OFF,
     CMD_ON,
     CMD_READ_ALL,
+    CMD_SLEEP,
+    CMD_WAKE_KEY,
+    CMD_WIFI_MAC,
+    VOLUME_STREAM,
     _DISPLAY,
 )
-from .parser import ProjectorState, parse_state
+from .parser import ProjectorState, parse_state, parse_wifi_mac
+from .wol import magic_packet
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,13 +54,20 @@ class XgimiNotSupported(Exception):
 
 
 class XgimiClient:
-    """Keep one network debugging connection and run screen commands on it."""
+    """Keep one network debugging connection and run projector commands on it."""
 
-    def __init__(self, host: str, port: int, key_path: str) -> None:
+    def __init__(
+        self, host: str, port: int, key_path: str, wifi_mac: str | None = None
+    ) -> None:
         """Store the connection target. The key file is created on first use."""
         self.host = host
         self.port = port
         self.key_path = key_path
+        self.wifi_mac = wifi_mac
+        self._mac_checked = wifi_mac is not None
+        self.volume_max = 100
+        # True after standby, including when the projector no longer answers.
+        self.standing_by = False
         self._device: AdbDeviceTcpAsync | None = None
         self._lock = asyncio.Lock()
 
@@ -78,19 +91,29 @@ class XgimiClient:
         if device_name in ("", "null"):
             device_name = "XGIMI Projector"
         try:
-            await self.async_state()
+            state = await self.async_state()
         except ValueError as err:
             raise XgimiNotSupported(str(err)) from err
-        return {
+        info = {
             "serial": serial,
             "model": model or "XGIMI",
             "manufacturer": manufacturer or "XGIMI",
             "device_name": device_name,
         }
+        if self.wifi_mac:
+            info["wifi_mac"] = self.wifi_mac
+        if not state.power_on:
+            self.standing_by = True
+        return info
 
     async def async_state(self) -> ProjectorState:
-        """Read screen, brightness, and luminance boost from the projector."""
-        return parse_state(await self._shell(CMD_READ_ALL))
+        """Read screen, picture, volume, and standby from the projector."""
+        state = parse_state(await self._shell(CMD_READ_ALL))
+        self.volume_max = state.volume_max
+        if not self._mac_checked:
+            self._mac_checked = True
+            self.wifi_mac = parse_wifi_mac(await self._shell(CMD_WIFI_MAC))
+        return state
 
     async def async_set_screen(self, turn_on: bool) -> None:
         """Turn the image on or off. The projector itself keeps running."""
@@ -108,6 +131,49 @@ class XgimiClient:
     async def async_set_luminance_boost(self, enabled: bool) -> None:
         """Turn luminance boost on (above level 10) or off."""
         await self._shell(CMD_BOOST_ON if enabled else CMD_BOOST_OFF)
+
+    async def async_set_volume(self, level: int) -> None:
+        """Set the music volume. This is the remote volume rocker."""
+        if level < 0 or level > self.volume_max:
+            raise ValueError(f"Volume must be 0–{self.volume_max}")
+        await self._shell(
+            f"cmd media_session volume --stream {VOLUME_STREAM} --set {level}"
+        )
+
+    async def async_set_power(self, turn_on: bool) -> None:
+        """Enter or leave standby. This does not shut the projector down."""
+        if not turn_on:
+            self.standing_by = True
+            try:
+                await self._shell(CMD_SLEEP)
+            except XgimiUnreachable:
+                return
+            return
+        self.standing_by = False
+        await self._send_wake_packet()
+        for _ in range(20):
+            try:
+                await self._shell(CMD_WAKE_KEY)
+                if (await self.async_state()).power_on:
+                    return
+            except XgimiUnreachable:
+                await self._send_wake_packet()
+            await asyncio.sleep(1)
+        raise XgimiUnreachable("Projector did not leave standby")
+
+    async def _send_wake_packet(self) -> None:
+        mac = self.wifi_mac
+        if not mac:
+            return
+        packet = magic_packet(mac)
+        targets = [("255.255.255.255", 9), ("255.255.255.255", 7)]
+        parts = self.host.split(".")
+        if len(parts) == 4 and all(part.isdigit() for part in parts):
+            targets.append((".".join([*parts[:3], "255"]), 9))
+            targets.append((self.host, 9))
+        await asyncio.get_running_loop().run_in_executor(
+            None, _send_broadcast, packet, targets
+        )
 
     async def _shell(self, command: str) -> str:
         async with self._lock:
@@ -155,6 +221,19 @@ class XgimiClient:
         self._device = None
         if device is not None:
             await _safe_close(device)
+
+
+def _send_broadcast(packet: bytes, targets: list[tuple[str, int]]) -> None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        for target in targets:
+            try:
+                sock.sendto(packet, target)
+            except OSError:
+                continue
+    finally:
+        sock.close()
 
 
 async def _safe_close(device: AdbDeviceTcpAsync) -> None:

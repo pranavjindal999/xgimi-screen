@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect the projector",
-        "description": "Use the projector's network address and debugging port. Screen, brightness, and luminance boost are read from the projector, so the remote and the picture menu stay in sync.",
+        "description": "Use the projector's network address and debugging port. Power, screen, brightness, luminance boost, and volume are read from the projector, so the remote stays in sync. Power off is standby, not shutdown.",
         "data": {
           "host": "Host",
           "port": "Port"
