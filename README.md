@@ -1,6 +1,6 @@
 # XGIMI Screen
 
-Home Assistant controls for an XGIMI projector: standby, screen off, brightness, luminance boost, and volume.
+Home Assistant controls for an XGIMI projector: standby, screen off, brightness, luminance boost, volume, and a D-pad remote.
 
 The controls are read from the projector every second. Changing them with the remote or the picture menu updates Home Assistant. Power off is standby, the same as a short press of the remote power button. It does not shut the projector down. Screen off only blanks the image.
 
@@ -18,7 +18,7 @@ The first connection asks the projector to allow network debugging. The picture 
 
 ## One card
 
-After a restart, refresh the browser. Add a card and choose **XGIMI Screen**. Pick the **Screen** entity. The card shows power, screen, brightness, luminance boost, and volume together.
+After a restart, refresh the browser. Add a card and choose **XGIMI Screen**. Pick the **Screen** entity. The card shows power, screen, brightness, luminance boost, volume, and a D-pad remote together. Click the remote pad, then use the Mac arrow keys and Return, or press the on-screen buttons.
 
 ## Controls
 
@@ -29,7 +29,10 @@ The projector appears as one device:
 - **Brightness** — the picture-menu slider, levels 1 through 10.
 - **Luminance boost** — the extra toggle that drives the light past level 10.
 - **Volume** — the remote volume rocker, from 0 to 100.
+- **Remote** — up, down, left, right, and OK, the same as the projector D-pad.
 
 If you change any of these on the projector, Home Assistant follows within about a second.
+
+There is also a service, `xgimi_screen.send_key`, with `key` set to `up`, `down`, `left`, `right`, or `ok`.
 
 Network debugging has to stay enabled on the projector.

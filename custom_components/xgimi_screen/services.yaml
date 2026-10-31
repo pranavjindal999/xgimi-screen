@@ -1,0 +1,23 @@
+send_key:
+  name: Send remote key
+  description: Press a D-pad key on the projector, the same as the remote arrows and OK.
+  fields:
+    entity_id:
+      name: Projector entity
+      description: Any entity from this projector, such as the Screen switch.
+      required: true
+      selector:
+        entity:
+          integration: xgimi_screen
+    key:
+      name: Key
+      description: Which D-pad key to press.
+      required: true
+      selector:
+        select:
+          options:
+            - "up"
+            - "down"
+            - "left"
+            - "right"
+            - "ok"

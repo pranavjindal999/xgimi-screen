@@ -52,3 +52,14 @@ BRIGHTNESS_SETTING = "gm_projector_brightness"
 MODEL_NAMES = {
     "XR16A": "Horizon 20 Max",
 }
+
+# D-pad keys for the dashboard remote. Values are Android keyevent names.
+REMOTE_KEYS = {
+    "up": "KEYCODE_DPAD_UP",
+    "down": "KEYCODE_DPAD_DOWN",
+    "left": "KEYCODE_DPAD_LEFT",
+    "right": "KEYCODE_DPAD_RIGHT",
+    "ok": "KEYCODE_DPAD_CENTER",
+}
+SERVICE_SEND_KEY = "send_key"
+ATTR_KEY = "key"

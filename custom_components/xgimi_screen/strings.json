@@ -32,5 +32,21 @@
       "wrong_device": "That address is a different projector.",
       "reconfigure_successful": "Projector connection updated."
     }
+  },
+  "services": {
+    "send_key": {
+      "name": "Send remote key",
+      "description": "Press a D-pad key on the projector, the same as the remote arrows and OK.",
+      "fields": {
+        "entity_id": {
+          "name": "Projector entity",
+          "description": "Any entity from this projector, such as the Screen switch."
+        },
+        "key": {
+          "name": "Key",
+          "description": "Which D-pad key to press: up, down, left, right, or ok."
+        }
+      }
+    }
   }
 }

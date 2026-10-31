@@ -25,6 +25,7 @@ from .const import (
     CMD_SLEEP,
     CMD_WAKE_KEY,
     CMD_WIFI_MAC,
+    REMOTE_KEYS,
     VOLUME_STREAM,
     _DISPLAY,
 )
@@ -134,6 +135,13 @@ class XgimiClient:
     async def async_set_screen(self, turn_on: bool) -> None:
         """Turn the image on or off. The projector itself keeps running."""
         await self._shell(CMD_ON if turn_on else CMD_OFF)
+
+    async def async_send_key(self, key: str) -> None:
+        """Press a D-pad key on the projector, the same as the remote arrows."""
+        code = REMOTE_KEYS.get(key)
+        if code is None:
+            raise ValueError(f"Unsupported remote key: {key}")
+        await self._shell(f"input keyevent {code}")
 
     async def async_set_brightness(self, level: int) -> None:
         """Set the 1–10 brightness slider and the picture-menu setting."""
