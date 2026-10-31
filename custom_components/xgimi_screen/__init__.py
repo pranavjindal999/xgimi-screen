@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 
 import voluptuous as vol
@@ -18,8 +20,19 @@ from .client import XgimiClient, XgimiUnreachable
 from .const import ATTR_KEY, DOMAIN, REMOTE_KEYS, SERVICE_SEND_KEY, adb_key_path
 from .coordinator import XgimiCoordinator
 
+_LOGGER = logging.getLogger(__name__)
+
 PLATFORMS = [Platform.NUMBER, Platform.SWITCH]
-CARD_URL = "/xgimi_screen/xgimi-screen-card.js"
+CARD_PATH = "/xgimi_screen/xgimi-screen-card.js"
+_WWW = Path(__file__).parent / "www"
+_MANIFEST = Path(__file__).parent / "manifest.json"
+
+try:
+    _CARD_VERSION = json.loads(_MANIFEST.read_text(encoding="utf-8"))["version"]
+except Exception:
+    _CARD_VERSION = "0"
+
+CARD_URL = f"{CARD_PATH}?v={_CARD_VERSION}"
 
 SEND_KEY_SCHEMA = vol.Schema(
     {
@@ -30,19 +43,8 @@ SEND_KEY_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Serve the dashboard card that groups every projector control."""
-    if not hass.data.setdefault(DOMAIN, {}).get("card_registered"):
-        await hass.http.async_register_static_paths(
-            [
-                StaticPathConfig(
-                    "/xgimi_screen",
-                    str(Path(__file__).parent / "www"),
-                    cache_headers=False,
-                )
-            ]
-        )
-        add_extra_js_url(hass, CARD_URL)
-        hass.data[DOMAIN]["card_registered"] = True
+    """Serve the dashboard card and register projector services."""
+    await _async_register_card(hass)
 
     async def async_send_key(call: ServiceCall) -> None:
         entity_id = call.data["entity_id"]
@@ -68,8 +70,56 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def _async_register_card(hass: HomeAssistant) -> None:
+    """Serve the card JS and register it as a Lovelace resource.
+
+    ``add_extra_js_url`` alone races the dashboard on storage-mode Lovelace and
+    surfaces as "Custom element doesn't exist". Persistent Lovelace resources
+    are what HACS cards use and what the dashboard awaits before rendering.
+    """
+    if hass.data.setdefault(DOMAIN, {}).get("card_registered"):
+        return
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig("/xgimi_screen", str(_WWW), cache_headers=False)]
+    )
+    add_extra_js_url(hass, CARD_URL)
+    await _async_ensure_lovelace_resource(hass)
+    hass.data[DOMAIN]["card_registered"] = True
+
+
+async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
+    """Keep one versioned Lovelace resource pointing at the card."""
+    lovelace = hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None) if lovelace else None
+    if resources is None:
+        return
+    try:
+        if not resources.loaded:
+            await resources.async_load()
+        existing = None
+        for item in list(resources.async_items()):
+            url = item.get("url", "")
+            if url == CARD_PATH or url.startswith(f"{CARD_PATH}?"):
+                existing = item
+                break
+        if existing is None:
+            await resources.async_create_item(
+                {"res_type": "module", "url": CARD_URL}
+            )
+            _LOGGER.info("Registered XGIMI Screen card as a Lovelace resource")
+        elif existing.get("url") != CARD_URL:
+            await resources.async_update_item(
+                existing["id"],
+                {"res_type": "module", "url": CARD_URL},
+            )
+            _LOGGER.info("Updated XGIMI Screen card resource to v%s", _CARD_VERSION)
+    except Exception:
+        _LOGGER.debug("Could not register Lovelace resource", exc_info=True)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Connect to the projector and expose its controls."""
+    await _async_register_card(hass)
     client = XgimiClient(
         entry.data["host"],
         entry.data["port"],

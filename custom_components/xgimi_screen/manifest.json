@@ -1,12 +1,14 @@
 {
   "domain": "xgimi_screen",
   "name": "XGIMI Screen",
+  "after_dependencies": ["lovelace"],
   "codeowners": ["@pranavjindal999"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/pranavjindal999/xgimi-screen",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/pranavjindal999/xgimi-screen/issues",
   "requirements": ["adb-shell[async]==0.4.4"],
-  "version": "1.4.0"
+  "version": "1.4.1"
 }

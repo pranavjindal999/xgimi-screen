@@ -371,12 +371,18 @@ class XgimiScreenCardEditor extends HTMLElement {
   }
 }
 
-customElements.define("xgimi-screen-card", XgimiScreenCard);
-customElements.define("xgimi-screen-card-editor", XgimiScreenCardEditor);
+if (!customElements.get("xgimi-screen-card")) {
+  customElements.define("xgimi-screen-card", XgimiScreenCard);
+}
+if (!customElements.get("xgimi-screen-card-editor")) {
+  customElements.define("xgimi-screen-card-editor", XgimiScreenCardEditor);
+}
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "xgimi-screen-card",
-  name: "XGIMI Screen",
-  description:
-    "Power, screen, brightness, luminance boost, volume, and a D-pad remote on one card.",
-});
+if (!window.customCards.some((card) => card.type === "xgimi-screen-card")) {
+  window.customCards.push({
+    type: "xgimi-screen-card",
+    name: "XGIMI Screen",
+    description:
+      "Power, screen, brightness, luminance boost, volume, and a D-pad remote on one card.",
+  });
+}

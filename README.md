@@ -18,7 +18,14 @@ The first connection asks the projector to allow network debugging. The picture 
 
 ## One card
 
-After a restart, refresh the browser. Add a card and choose **XGIMI Screen**. Pick the **Screen** entity. The card shows power, screen, brightness, luminance boost, volume, and a D-pad remote together. Click the remote pad, then use the Mac arrow keys and Return, or press the on-screen buttons.
+After a restart, hard-refresh the browser. Add a card, open **Manual**, and use:
+
+```yaml
+type: custom:xgimi-screen-card
+screen: switch.YOUR_SCREEN_ENTITY
+```
+
+Replace the screen entity with yours. The card shows power, screen, brightness, luminance boost, volume, and a D-pad remote together. Click the remote pad, then use the Mac arrow keys and Return, or press the on-screen buttons.
 
 ## Controls
 
