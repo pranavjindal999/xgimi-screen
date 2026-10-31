@@ -60,6 +60,8 @@ REMOTE_KEYS = {
     "left": "KEYCODE_DPAD_LEFT",
     "right": "KEYCODE_DPAD_RIGHT",
     "ok": "KEYCODE_DPAD_CENTER",
+    "back": "KEYCODE_BACK",
+    "home": "KEYCODE_HOME",
 }
 SERVICE_SEND_KEY = "send_key"
 ATTR_KEY = "key"

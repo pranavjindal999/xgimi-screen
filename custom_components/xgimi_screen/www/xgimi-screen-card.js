@@ -104,6 +104,13 @@ class XgimiScreenCard extends HTMLElement {
           gap: 8px;
           justify-content: center;
         }
+        .pad-nav {
+          display: grid;
+          grid-template-columns: repeat(2, 88px);
+          gap: 8px;
+          justify-content: center;
+          margin-top: 8px;
+        }
         .pad button {
           border: 1px solid var(--divider-color);
           background: var(--secondary-background-color, var(--card-background-color));
@@ -129,6 +136,7 @@ class XgimiScreenCard extends HTMLElement {
         .pad .ok { grid-column: 2; grid-row: 2; font-size: 14px; letter-spacing: 0.04em; }
         .pad .right { grid-column: 3; grid-row: 2; }
         .pad .down { grid-column: 2; grid-row: 3; }
+        .pad .back, .pad .home { height: 44px; font-size: 13px; letter-spacing: 0.02em; }
       </style>
       <div class="body">
         <p class="missing" hidden>Edit this card and choose the projector Screen entity.</p>
@@ -159,7 +167,7 @@ class XgimiScreenCard extends HTMLElement {
           <div class="remote">
             <div class="remote-title">
               <span class="name">Remote</span>
-              <span class="hint">Click the pad, then use arrow keys and Return</span>
+              <span class="hint">Arrows, Return, Esc, Home</span>
             </div>
             <div class="pad" tabindex="0" aria-label="Projector remote">
               <div class="pad-grid">
@@ -168,6 +176,10 @@ class XgimiScreenCard extends HTMLElement {
                 <button type="button" class="ok" data-key="ok" aria-label="OK">OK</button>
                 <button type="button" class="right" data-key="right" aria-label="Right">→</button>
                 <button type="button" class="down" data-key="down" aria-label="Down">↓</button>
+              </div>
+              <div class="pad-nav">
+                <button type="button" class="back" data-key="back" aria-label="Back">Back</button>
+                <button type="button" class="home" data-key="home" aria-label="Home">Home</button>
               </div>
             </div>
           </div>
@@ -309,6 +321,9 @@ class XgimiScreenCard extends HTMLElement {
       ArrowRight: "right",
       Enter: "ok",
       NumpadEnter: "ok",
+      Escape: "back",
+      Backspace: "back",
+      Home: "home",
     };
     const key = map[event.key];
     if (!key) {
@@ -343,7 +358,10 @@ class XgimiScreenCard extends HTMLElement {
 
 class XgimiScreenCardEditor extends HTMLElement {
   setConfig(config) {
-    this._config = { ...config };
+    this._config = { ...(config || {}) };
+    if (this._picker) {
+      this._picker.value = this._config.screen || "";
+    }
   }
 
   set hass(hass) {
@@ -355,7 +373,7 @@ class XgimiScreenCardEditor extends HTMLElement {
       this._picker.style.display = "block";
       this._picker.style.padding = "16px";
       this._picker.addEventListener("value-changed", (event) => {
-        this._config = { ...this._config, screen: event.detail.value };
+        this._config = { ...(this._config || {}), screen: event.detail.value };
         this.dispatchEvent(
           new CustomEvent("config-changed", {
             detail: { config: this._config },
@@ -367,7 +385,7 @@ class XgimiScreenCardEditor extends HTMLElement {
       this.append(this._picker);
     }
     this._picker.hass = hass;
-    this._picker.value = this._config.screen || "";
+    this._picker.value = (this._config && this._config.screen) || "";
   }
 }
 

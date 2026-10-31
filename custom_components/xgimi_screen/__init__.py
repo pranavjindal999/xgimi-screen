@@ -94,8 +94,9 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
     if resources is None:
         return
     try:
-        if not resources.loaded:
-            await resources.async_load()
+        # async_get_info() forces a load from disk. Calling async_create_item
+        # before that can wipe every existing Lovelace resource.
+        await resources.async_get_info()
         existing = None
         for item in list(resources.async_items()):
             url = item.get("url", "")
