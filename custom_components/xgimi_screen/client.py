@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import socket
+from collections.abc import Awaitable, Callable
 
 from adb_shell.adb_device_async import AdbDeviceTcpAsync
 from adb_shell.auth.keygen import keygen
@@ -76,6 +77,14 @@ class XgimiClient:
         async with self._lock:
             await self._close_locked()
 
+    async def async_read_serial(self) -> str:
+        """Return the projector serial used to find it after an IP change."""
+        raw = (await self._shell("getprop ro.serialno", timeout_s=4, retry=False)).strip()
+        serial = raw.splitlines()[0].strip() if raw else ""
+        if not serial or serial == "null":
+            raise XgimiNotSupported(raw)
+        return serial
+
     async def async_probe(self) -> dict[str, str]:
         """Connect and read the identity used for the Home Assistant device."""
         raw = await self._shell(
@@ -105,6 +114,13 @@ class XgimiClient:
         if not state.power_on:
             self.standing_by = True
         return info
+
+    async def async_set_host(self, host: str) -> None:
+        """Point the client at a new address and drop the old connection."""
+        if host == self.host:
+            return
+        self.host = host
+        await self.async_close()
 
     async def async_state(self) -> ProjectorState:
         """Read screen, picture, volume, and standby from the projector."""
@@ -158,8 +174,17 @@ class XgimiClient:
         if "volume-unread" in reply:
             raise ValueError("Could not read the projector volume")
 
-    async def async_set_power(self, turn_on: bool) -> None:
-        """Enter or leave standby. This does not shut the projector down."""
+    async def async_set_power(
+        self,
+        turn_on: bool,
+        rediscover: Callable[[], Awaitable[bool]] | None = None,
+    ) -> None:
+        """Enter or leave standby. This does not shut the projector down.
+
+        ``rediscover`` is an optional awaitable callable used while waking.
+        Standby can drop the network lease, so the projector may answer on a
+        new address after Wake-on-LAN.
+        """
         if not turn_on:
             self.standing_by = True
             try:
@@ -169,12 +194,14 @@ class XgimiClient:
             return
         self.standing_by = False
         await self._send_wake_packet()
-        for _ in range(20):
+        for attempt in range(20):
             try:
                 await self._shell(CMD_WAKE_KEY)
                 if (await self.async_state()).power_on:
                     return
             except XgimiUnreachable:
+                if rediscover is not None and attempt in (2, 8, 14):
+                    await rediscover()
                 await self._send_wake_packet()
             await asyncio.sleep(1)
         raise XgimiUnreachable("Projector did not leave standby")

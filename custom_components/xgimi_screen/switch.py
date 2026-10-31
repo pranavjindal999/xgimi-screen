@@ -72,7 +72,10 @@ class XgimiPowerSwitch(_XgimiSwitch):
 
     async def async_turn_on(self, **kwargs: object) -> None:
         """Leave standby, then read the projector again."""
-        await self.coordinator.client.async_set_power(True)
+        await self.coordinator.client.async_set_power(
+            True,
+            rediscover=lambda: self.coordinator.async_rediscover(force=True),
+        )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: object) -> None:

@@ -12,7 +12,7 @@ The controls are read from the projector every second. Changing them with the re
 2. Restart Home Assistant.
 3. Go to **Settings → Devices & services → Add integration**, and choose **XGIMI Screen**.
 
-The projector on this network is `192.168.1.8`, port `5555`. Those values are already filled in.
+The first setup asks for the projector address. Port `5555` is already filled in. The integration stores the projector serial from that first connection. If the projector later gets a new IP on the same subnet, Home Assistant finds it again by that serial and updates the stored address.
 
 The first connection asks the projector to allow network debugging. The picture has to be on to see **Allow USB debugging**. Choose **Allow**, and check **Always allow from this computer**.
 
