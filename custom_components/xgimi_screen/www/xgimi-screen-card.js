@@ -74,7 +74,6 @@ class XgimiScreenCard extends HTMLElement {
         .slider { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin: 8px 0; }
         .slider input { width: 100%; accent-color: var(--primary-color); }
         .value { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
-        input[type="checkbox"] { width: 40px; height: 22px; accent-color: var(--primary-color); }
         .missing { color: var(--secondary-text-color); }
         .remote {
           margin-top: 16px;
@@ -142,23 +141,23 @@ class XgimiScreenCard extends HTMLElement {
         <p class="missing" hidden>Edit this card and choose the projector Screen entity.</p>
         <div class="controls" hidden>
           <h2 class="title"></h2>
-          <label class="row" data-kind="power">
+          <div class="row" data-kind="power">
             <span><span class="name">Power</span><span class="hint">Off is standby, not shutdown</span></span>
-            <input type="checkbox" data-domain="switch">
-          </label>
-          <label class="row" data-kind="screen">
+            <ha-switch data-domain="switch"></ha-switch>
+          </div>
+          <div class="row" data-kind="screen">
             <span><span class="name">Screen</span><span class="hint">Off blanks the image</span></span>
-            <input type="checkbox" data-domain="switch">
-          </label>
+            <ha-switch data-domain="switch"></ha-switch>
+          </div>
           <label class="slider" data-kind="brightness">
             <span class="name">Brightness</span>
             <span class="value">1</span>
             <input type="range" data-domain="number" min="1" max="10" step="1" value="1">
           </label>
-          <label class="row" data-kind="boost">
+          <div class="row" data-kind="boost">
             <span><span class="name">Luminance boost</span><span class="hint">Past level 10</span></span>
-            <input type="checkbox" data-domain="switch">
-          </label>
+            <ha-switch data-domain="switch"></ha-switch>
+          </div>
           <label class="slider" data-kind="volume">
             <span class="name">Volume</span>
             <span class="value">0</span>
@@ -213,7 +212,7 @@ class XgimiScreenCard extends HTMLElement {
 
   _bindToggle(kind) {
     const row = this.shadowRoot.querySelector(`[data-kind="${kind}"]`);
-    const input = row.querySelector("input");
+    const input = row.querySelector("ha-switch");
     input.addEventListener("change", () => {
       if (!input.dataset.entity || !this._hass) {
         return;
